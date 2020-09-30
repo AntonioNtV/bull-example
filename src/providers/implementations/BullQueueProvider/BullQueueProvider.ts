@@ -1,4 +1,5 @@
-import { Job } from 'bull';
+import { processStudentsWorkerPath } from '../../../workers/ProcessStudentWorker';
+import { sendStudentToProcessWorkerPath } from '../../../workers/SendStudentToProcessWorker';
 import IQueueProvider from '../../IQueueProvider';
 import BasicQueue from './BasicQueue';
 
@@ -7,7 +8,17 @@ class BullQueueProvider implements IQueueProvider {
 
     constructor() {
         this.queues = [];
-        this.queues.push(new BasicQueue('teste', ''));
+        this.queues.push(
+            new BasicQueue(
+                'send_student_to_process',
+                sendStudentToProcessWorkerPath,
+            ),
+        );
+        this.queues.push(
+            new BasicQueue('process_student_queue', processStudentsWorkerPath),
+        );
+
+        this.process();
     }
 
     public async empty(): Promise<void> {
@@ -27,13 +38,14 @@ class BullQueueProvider implements IQueueProvider {
         });
     }
 
-    public async add({ name, data, opts }: Job): Promise<void> {
+    public getQueue(name: string): BasicQueue {
         const queue = this.queues.find(q => q.name === name);
 
         if (!queue) {
             throw new Error('Worker not found');
         }
-        await queue.bull.add({ data }, opts);
+
+        return queue;
     }
 
     public async process(): Promise<void> {

@@ -1,10 +1,10 @@
-import { Job } from 'bull';
+import BasicQueue from './implementations/BullQueueProvider/BasicQueue';
 
 interface IQueueProvider {
     empty(): Promise<void>;
     clean(time: number, failed: boolean): Promise<void>;
-    add({ name, data, opts }: Job): Promise<void>;
     process(): Promise<void>;
+    getQueue(name: string): BasicQueue;
 }
 
 export default IQueueProvider;

@@ -21,6 +21,8 @@
     "rules": {
         "prettier/prettier": "error",
         "no-console": "off",
+        "no-restricted-syntax": "off",
+        "no-await-in-loop": "off",
         "import/extensions": [
             "error",
             "ignorePackages",
@@ -28,7 +30,7 @@
                 "ts": "never"
             }
             ]
-	  },
+      },
 	  "settings": {
 	    "import/resolver": {
 	      "typescript": {}

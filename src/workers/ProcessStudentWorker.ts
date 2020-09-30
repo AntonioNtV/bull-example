@@ -1,17 +1,14 @@
-import { DoneCallback, Job } from 'bull';
+import { Job, DoneCallback } from 'bull';
 
-const process = async (job: Job, done: DoneCallback): Promise<void> => {
+export default async function (job: Job, done: DoneCallback): Promise<void> {
     try {
-        const { studentName, studentToken } = job.data;
+        const { studentName, studentToken } = job.data.data.data;
 
         console.log('PROCESSING STUDENT');
 
         console.log(studentName, studentToken);
+        done();
     } catch (err) {
         done(err);
     }
-};
-
-const processStudentsWorkerPath = __filename;
-export { processStudentsWorkerPath };
-export default process;
+}

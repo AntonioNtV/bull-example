@@ -1,24 +1,26 @@
-import { processStudentsWorkerPath } from '../../../workers/ProcessStudentWorker';
-import { sendStudentToProcessWorkerPath } from '../../../workers/SendStudentToProcessWorker';
-import IQueueProvider from '../../IQueueProvider';
-import BasicQueue from './BasicQueue';
+import Bull, { DoneCallback, Job } from 'bull';
+import { setQueues } from 'bull-board';
 
-class BullQueueProvider implements IQueueProvider {
-    private queues: BasicQueue[];
+interface IQueue {
+    bull: Bull.Queue;
+    key: string;
+    handle: (job: Job, done: DoneCallback) => Promise<void>;
+}
+
+interface IAddQueue {
+    key: string;
+    handle: (job: Job, done: DoneCallback) => Promise<void>;
+}
+
+interface IAddJob {
+    key: string;
+    job?: Job;
+}
+class BullQueueProvider {
+    private queues: IQueue[];
 
     constructor() {
         this.queues = [];
-        this.queues.push(
-            new BasicQueue(
-                'send_student_to_process',
-                sendStudentToProcessWorkerPath,
-            ),
-        );
-        this.queues.push(
-            new BasicQueue('process_student_queue', processStudentsWorkerPath),
-        );
-
-        this.process();
     }
 
     public async empty(): Promise<void> {
@@ -27,6 +29,10 @@ class BullQueueProvider implements IQueueProvider {
                 await queue.bull.empty();
             }),
         );
+    }
+
+    public bullUISetQueues(): void {
+        setQueues(this.queues.map(q => q.bull));
     }
 
     public async clean(time: number, failed: boolean): Promise<void> {
@@ -38,21 +44,29 @@ class BullQueueProvider implements IQueueProvider {
         });
     }
 
-    public getQueue(name: string): BasicQueue {
-        const queue = this.queues.find(q => q.name === name);
+    public register({ key, handle }: IAddQueue): void {
+        this.queues.push({
+            bull: new Bull(key),
+            handle,
+            key,
+        });
+    }
+
+    public async add({ key, job }: IAddJob): Promise<void> {
+        const queue = this.queues.find(q => q.key === key);
 
         if (!queue) {
-            throw new Error('Worker not found');
+            throw new Error('Queue not registered');
         }
 
-        return queue;
+        queue.bull.add({ data: job });
     }
 
     public async process(): Promise<void> {
         this.queues.forEach(queue => {
-            queue.bull.process(queue.processPath);
+            queue.bull.process(queue.handle);
             queue.bull.on('failed', (job, err) => {
-                console.log(queue.name, JSON.stringify(err));
+                console.log(queue.key, JSON.stringify(err));
             });
         });
     }

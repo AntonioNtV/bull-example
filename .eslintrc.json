@@ -22,6 +22,7 @@
         "prettier/prettier": "error",
         "no-console": "off",
         "no-restricted-syntax": "off",
+        "class-methods-use-this": "off",
         "no-await-in-loop": "off",
         "import/extensions": [
             "error",

@@ -1,27 +1,27 @@
 import express from 'express';
 import cron from 'node-cron';
+import { UI } from 'bull-board';
 import routes from './routes/index';
-import IQueueProvider from './providers/IQueueProvider';
 import BullQueueProvider from './providers/implementations/BullQueueProvider/BullQueueProvider';
+import SendStudentToProcessWorker from './workers/SendStudentToProcessWorker';
+import ProcessStudentWorker from './workers/ProcessStudentWorker';
 
 class App {
     public express: express.Application;
 
-    public queueProvider: IQueueProvider;
+    public queueProvider: BullQueueProvider;
 
     constructor() {
         this.express = express();
         this.queueProvider = new BullQueueProvider();
         this.initialization();
-        this.defineCron();
     }
 
-    private defineCron() {
-        const sendToProcessQueue = this.queueProvider.getQueue(
-            'send_student_to_process',
-        );
+    private defineCron(): void {
         cron.schedule('* * * * *', async () =>
-            sendToProcessQueue.bull.add('process_students'),
+            this.queueProvider.add({
+                key: 'send-student-to-process',
+            }),
         );
     }
 
@@ -29,17 +29,34 @@ class App {
         this.middlewares();
         this.routes();
         this.database();
+        this.workers();
+        this.defineCron();
     }
 
     private middlewares(): void {
         this.express.use(express.json());
+        this.express.use('/admin/queues', UI);
+    }
+
+    private workers(): void {
+        this.queueProvider.register({
+            key: 'send-student-to-process',
+            handle: SendStudentToProcessWorker,
+        });
+
+        this.queueProvider.register({
+            key: 'process-students',
+            handle: ProcessStudentWorker,
+        });
+
+        this.queueProvider.process();
+        this.queueProvider.bullUISetQueues();
     }
 
     private routes(): void {
         this.express.use(routes);
     }
 
-    // eslint-disable-next-line class-methods-use-this
     private database(): void {
         console.log('conecting to database');
     }

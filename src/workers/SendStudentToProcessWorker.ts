@@ -1,19 +1,22 @@
-import { DoneCallback } from 'bull';
+import { DoneCallback, Job } from 'bull';
 import { queueProvider } from '../app';
 import studentsArray from '../studentsData';
 
-export default async function (done: DoneCallback): Promise<void> {
-    console.log('STUDENTS');
-    console.log(studentsArray);
-
+export default async function (job: Job, done: DoneCallback): Promise<void> {
     try {
-        const queue = queueProvider.getQueue('process_student_queue');
         for (const student of studentsArray) {
             console.log(`Adding student ${student.name}`);
 
-            await queue.bull.add(student.name, {
-                studentName: student.name,
-                studentToken: student.token,
+            const jobData = {
+                data: {
+                    studentName: student.name,
+                    studentToken: student.token,
+                },
+            } as Job;
+
+            queueProvider.add({
+                key: 'process-students',
+                job: jobData,
             });
         }
         done();
@@ -21,6 +24,3 @@ export default async function (done: DoneCallback): Promise<void> {
         done(err);
     }
 }
-
-const sendStudentToProcessWorkerPath = __filename;
-export { sendStudentToProcessWorkerPath };
